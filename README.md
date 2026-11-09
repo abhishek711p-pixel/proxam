@@ -47,7 +47,7 @@ Class prices: `PRICES` in `src/lib/config.ts`. Class 12 Science batches: `TRACKS
 | 7.1 Email OTP signup (mobile in profile), profile, consent | Done. Parent consent is verified by OTP to the parent (DPDP "verifiable consent") |
 | 7.2 Test: 24x7, MCQ, timer + auto-submit, autosave, palette, mark for review, rotation, 3 attempts, instructions, submit confirm | Done |
 | 7.3 Instant result: score, %, section, subject, topic, accuracy, time per question, strong/weak, level, PDF | Done (PDF uses the browser's Save as PDF) |
-| 7.4 Guidance call: CTA after result, date/slot, Meet or Zoom, reschedule, cancel, counsellor view + notes | Done. Meeting link is pasted by admin (auto-creation needs API keys, see below) |
+| 7.4 Guidance call: CTA after result, date/slot, Google Meet only (Zoom removed), reschedule, cancel, counsellor view + notes | Done. Meeting link is pasted by admin (auto-creation needs API keys, see below) |
 | 7.10 Dashboard with next action, score history, upcoming call | Done |
 | 7.11 Admin: question bank + CSV bulk upload, student/lead filters + CSV export, call management, funnel | Done (basic) |
 | English + Hindi | UI done. Questions are English only until the content team adds Hindi |

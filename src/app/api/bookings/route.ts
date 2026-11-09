@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   const b = await body(req);
   const slotStart = str(b.slotStart, 40);
-  const platform = b.platform === "zoom" ? "zoom" : "meet";
+  const platform = "meet" as const; // Google Meet only (Zoom option removed)
   if (!(await isBookable(slotStart))) return fail("This slot is no longer free. Please pick another.");
 
   const now = nowISO();

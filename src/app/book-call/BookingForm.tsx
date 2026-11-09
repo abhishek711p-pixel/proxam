@@ -12,9 +12,9 @@ const fmtDay = (d: string, lang: Lang) =>
 const fmtTime = (s: string) =>
   new Date(s).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
-export default function BookingForm({ lang, days, rescheduling, zoomOk }: { lang: Lang; days: Day[]; rescheduling: boolean; zoomOk: boolean }) {
+export default function BookingForm({ lang, days, rescheduling }: { lang: Lang; days: Day[]; rescheduling: boolean }) {
   const router = useRouter();
-  const [platform, setPlatform] = useState<"meet" | "zoom">("meet");
+  const platform = "meet" as const; // Zoom option removed: Google Meet only
   const [day, setDay] = useState(days[0]?.date || "");
   const [slot, setSlot] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,7 +40,7 @@ export default function BookingForm({ lang, days, rescheduling, zoomOk }: { lang
         
         <p className="mt-2 text-xl font-bold">{t(lang, "booked_title")}</p>
         <p className="mt-1 font-semibold text-brand-700">
-          {fmtDay(slot.slice(0, 10), lang)}, {fmtTime(slot)}, {platform === "meet" ? "Google Meet" : "Zoom"}
+          {fmtDay(slot.slice(0, 10), lang)}, {fmtTime(slot)}, Google Meet
         </p>
         <p className="mt-2 text-slate-600">{t(lang, "booked_desc")}</p>
         <p className="mt-2 text-sm text-slate-600">🔔 {t(lang, "sms_reminders")}</p>
@@ -53,21 +53,6 @@ export default function BookingForm({ lang, days, rescheduling, zoomOk }: { lang
 
   return (
     <div className="mt-6 space-y-5 pb-24 md:pb-0">
-      <section className="card">
-        <p className="label">{t(lang, "pick_platform")}</p>
-        <div className={`grid gap-2 ${zoomOk ? "grid-cols-2" : "grid-cols-1"}`}>
-          {(zoomOk ? (["meet", "zoom"] as const) : (["meet"] as const)).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPlatform(p)}
-              aria-pressed={platform === p}
-              className={`min-h-14 rounded-xl border font-semibold ${platform === p ? "border-brand-600 bg-brand-50 text-brand-700 ring-2 ring-brand-100" : "border-slate-300 bg-white"}`}
-            >
-              {p === "meet" ? "Google Meet" : "Zoom"}
-            </button>
-          ))}
-        </div>
-      </section>
 
       <section className="card">
         <p className="label">{t(lang, "pick_day")}</p>

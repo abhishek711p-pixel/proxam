@@ -128,9 +128,9 @@ export function linkMessage(b: Booking, name?: string) {
   return `Hi${name ? ` ${name.split(" ")[0]}` : ""}, your free Proxam guidance call is on ${fmtWhen(b.slotStart)} (${platformName(b)}).\nJoin here: ${b.meetingLink}\nPlease join 2 minutes early.`;
 }
 
-/** Can students pick Zoom? Only when Zoom is connected, or when nothing is connected (links are added by hand anyway). */
+/** Zoom is no longer offered to students: Google Meet only. */
 export async function zoomSelectable() {
-  return zoomEnabled() || !(await googleMode());
+  return false;
 }
 
 /** Removes the calendar event / Zoom meeting and tells the student. Never throws. */

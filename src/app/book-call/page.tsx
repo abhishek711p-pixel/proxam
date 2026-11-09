@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import BookingForm from "./BookingForm";
-import { zoomSelectable } from "@/lib/bookingHooks";
 import { pageUser } from "@/lib/pageUser";
 import { getLang } from "@/lib/lang";
 import { userAttempts, userBookings } from "@/lib/store";
@@ -26,7 +25,7 @@ export default async function BookCall() {
           <h1 className="text-2xl font-bold md:text-3xl">{t("book_title")}</h1>
           <p className="mt-1 text-slate-600">{t("book_sub")}</p>
           {hasResult ? (
-            <BookingForm lang={lang} days={await buildSlots()} rescheduling={Boolean(existing)} zoomOk={await zoomSelectable()} />
+            <BookingForm lang={lang} days={await buildSlots()} rescheduling={Boolean(existing)} />
           ) : (
             <div className="card mt-6 text-center">
               <p>{t("take_test_first")}</p>
