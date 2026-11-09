@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  /* Mukta: humanist sans from India, Latin + Devanagari. Bricolage Grotesque for headings. Kalam: teacher's pen, used sparingly. */
+  --font-sans: var(--f-body), var(--f-body-hi), ui-sans-serif, system-ui, "Noto Sans Devanagari", Arial, sans-serif;
+  --font-display: var(--f-display), var(--f-body-hi), var(--f-body), ui-sans-serif, system-ui, sans-serif;
+  --font-hand: var(--f-hand), var(--f-hand-hi), "Comic Sans MS", cursive;
+  /* Palette: Sage Green #9CAF88 (brand), Burnt Amber #CC5500 (accent), Concrete Grey #A7A7A7 (neutrals) on cream */
+  --color-brand-50: #f3f6ef;
+  --color-brand-100: #e3eadb;
+  --color-brand-200: #c9d6bc;
+  --color-brand-300: #b3c4a2;
+  --color-brand-400: #9caf88;
+  --color-brand-500: #7a9165;
+  --color-brand-600: #5c7349;
+  --color-brand-700: #4a5e3b;
+  --color-brand-800: #3a4a2f;
+  --color-brand-900: #2a3622;
+
+  --color-accent-50: #fdf1e8;
+  --color-accent-100: #fadcc6;
+  --color-accent-200: #f2b98e;
+  --color-accent-300: #e8955a;
+  --color-accent-400: #db7230;
+  --color-accent-500: #cc5500;
+  --color-accent-600: #b34a00;
+  --color-accent-700: #8f3b00;
+  --color-accent-800: #6b2c00;
+  --color-accent-900: #4a1f00;
+
+  /* "slate" is re-mapped to warm concrete greys so every grey in the app follows the palette */
+  --color-slate-50: #f7f4ec;
+  --color-slate-100: #efebe3;
+  --color-slate-200: #e2ddd3;
+  --color-slate-300: #cfcac0;
+  --color-slate-400: #a7a7a7;
+  --color-slate-500: #858581;
+  --color-slate-600: #676763;
+  --color-slate-700: #4c4c49;
+  --color-slate-800: #333331;
+  --color-slate-900: #212120;
+}
+
+/* Mobile first: base styles are for phones (360px+). md: = tablet, lg: = desktop. */
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-slate-50 text-[17px] leading-relaxed text-slate-800 antialiased; }
+  h1, h2, h3 { @apply font-display font-bold tracking-[-0.02em] text-brand-900; text-wrap: balance; }
+  h1 { @apply leading-[1.08]; }
+  h2 { @apply leading-tight; }
+  p { text-wrap: pretty; }
+  :focus-visible { outline: 2px solid var(--color-accent-500); outline-offset: 2px; }
+}
+
+/* Surfaces: flat paper with a pencil-grey edge. No soft shadows, no gradients. */
+@utility container-x { @apply mx-auto w-full max-w-xl px-4 md:max-w-3xl md:px-6 lg:max-w-6xl lg:px-8; }
+@utility card { @apply rounded-xl border border-slate-300 bg-white p-4 md:p-6; }
+@utility sheet { @apply rounded-sm border border-slate-300 bg-white; }
+@utility btn { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-5 text-base font-semibold transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50; }
+@utility btn-primary { @apply btn bg-brand-800 text-white hover:bg-brand-900; }
+@utility btn-accent { @apply btn bg-accent-500 text-white hover:bg-accent-600; }
+@utility btn-ghost { @apply btn border border-slate-400 bg-transparent text-brand-900 hover:border-brand-800 hover:bg-white; }
+@utility btn-sm { @apply min-h-9 rounded-md px-3 text-sm; }
+@utility label { @apply mb-1.5 block text-sm font-semibold text-brand-900; }
+@utility input { @apply block min-h-12 w-full rounded-lg border border-slate-400 bg-white px-4 text-base outline-none transition placeholder:text-slate-400 focus:border-brand-700 focus:ring-2 focus:ring-brand-200; }
+@utility chip { @apply inline-flex items-center gap-1 rounded-md border border-current/30 px-2.5 py-1 text-sm font-medium; }
+@utility pill { @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold; }
+@utility error { @apply rounded-lg border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-800; }
+@utility hand { font-family: var(--font-hand); @apply font-bold text-accent-500; }
+/* Ruled notebook lines, for the answer-sheet surfaces */
+@utility ruled { background-image: repeating-linear-gradient(to bottom, transparent 0 31px, color-mix(in srgb, var(--color-slate-400) 35%, transparent) 31px 32px); }
+
+/* Browser autofill: keep our colours instead of Chrome's blue/yellow fill */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-slate-900);
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  caret-color: var(--color-slate-900);
+  transition: background-color 9999s ease-out 0s;
+}
+::selection { background: var(--color-brand-200); }
+input[type="checkbox"] { accent-color: var(--color-brand-600); }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  .card { break-inside: avoid; }
+}
