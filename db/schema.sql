@@ -49,7 +49,7 @@ create table if not exists enrollments (
   field text
 );
 -- one active batch per student, even if they click "Join" twice at the same moment
-create unique index if not exists enrollments_one_active on enrollments (user_id) where expires_at is null;
+-- (one row per batch per student: see "Several batches per student" at the end)
 create index if not exists enrollments_batch_idx on enrollments (cls, field) where expires_at is null;
 
 create table if not exists test_purchases (
@@ -106,7 +106,7 @@ create index if not exists attempts_user_idx on attempts (user_id, started_at de
 create unique index if not exists attempts_one_open on attempts (user_id) where status = 'in_progress';
 -- attempt numbers cannot repeat (two tabs cannot both take "attempt 2")
 create unique index if not exists attempts_no_unique on attempts (user_id, attempt_no) where checkpoint_no is null;
-create unique index if not exists attempts_checkpoint_unique on attempts (user_id, checkpoint_no) where checkpoint_no is not null;
+-- (checkpoint tests are unique per batch: see "Several batches per student" at the end)
 create index if not exists attempts_open_expiry_idx on attempts (expires_at) where status = 'in_progress';
 create index if not exists attempts_submitted_idx on attempts (submitted_at desc) where status = 'submitted';
 
@@ -209,7 +209,7 @@ update notifications set aud_field = case aud_field when 'pcb' then 'neet' else 
 
 -- Razorpay orders (Nov 2026). An order is made before Checkout opens; it becomes "paid" only after the
 -- Razorpay signature is checked (in /api/pay/verify or the webhook), and only then the batch/test/seat is given.
--- status: created | paid | needs_refund (paid, but the student already had that batch: refund from Razorpay dashboard)
+-- status: created | paid | needs_refund (paid, but the student was already in that same batch: refund from Razorpay dashboard)
 create table if not exists payment_orders (
   id text primary key,
   user_id text not null references users(id) on delete cascade,
@@ -224,3 +224,21 @@ create table if not exists payment_orders (
 );
 create index if not exists payment_orders_user_idx on payment_orders (user_id, created_at desc);
 create index if not exists payment_orders_status_idx on payment_orders (status, created_at desc);
+
+-- Several batches per student (Nov 2026): a student can join JEE and Boards PCM together, for example.
+-- One active row per batch; users.current_batch is the enrolment the dashboard shows (the student can switch).
+-- Checkpoint tests belong to a batch (attempts.batch_key = "cls|field"). Safe to run again.
+alter table users add column if not exists current_batch text;
+drop index if exists enrollments_one_active;
+create unique index if not exists enrollments_one_per_batch on enrollments (user_id, cls, field) where expires_at is null;
+alter table attempts add column if not exists batch_key text;
+with k as (
+  select a.id, (select coalesce(e.cls, u.cls) || '|' || coalesce(e.field, u.field)
+                from enrollments e join users u on u.id = e.user_id
+                where e.user_id = a.user_id order by (e.expires_at is null) desc, e.paid_at desc limit 1) as key
+  from attempts a where a.checkpoint_no is not null and a.batch_key is null
+)
+update attempts a set batch_key = k.key, data = jsonb_set(a.data, '{batchKey}', to_jsonb(k.key))
+  from k where a.id = k.id and k.key is not null;
+drop index if exists attempts_checkpoint_unique;
+create unique index if not exists attempts_checkpoint_batch_unique on attempts (user_id, batch_key, checkpoint_no) where checkpoint_no is not null;

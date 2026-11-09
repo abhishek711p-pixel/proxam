@@ -90,13 +90,16 @@ export async function startOrResumeAttempt(user: User, opts: { checkpointNo?: nu
     const past = await userAttempts(user.id);
     const open = past.find((a) => a.status === "in_progress");
     if (open) return { attempt: open };
-    if (opts.checkpointNo && past.some((a) => a.checkpointNo === opts.checkpointNo)) return { error: "You have already taken this test." };
+    // Checkpoint tests belong to the batch open on the dashboard (a student can be in several batches)
+    const bt = opts.checkpointNo ? batchOf(user) : undefined;
+    const key = bt ? `${bt.cls}|${bt.field}` : undefined;
+    if (opts.checkpointNo && past.some((a) => a.checkpointNo === opts.checkpointNo && (a.batchKey ?? key) === key)) return { error: "You have already taken this test." };
     if (!opts.checkpointNo && attemptsLeft(user, past) <= 0) {
       return { error: "You have used all free attempts. The next test costs ₹49." };
     }
 
     // Batch tests use the batch's pattern (Class 12 JEE / NEET / Boards); the free test uses the student's own field
-    const track = opts.checkpointNo ? batchOf(user).field : undefined;
+    const track = bt?.field;
     const field = track ? blueprintField(track) : user.profile.field;
     const level = track && isTrack(track) ? (TRACKS[track].competitive ? "competitive" : "board") : undefined;
     // Favourite subject only shapes the diagnostic test; batch checkpoints keep the even split
@@ -115,6 +118,7 @@ export async function startOrResumeAttempt(user: User, opts: { checkpointNo?: nu
       attemptNo: opts.checkpointNo ? 0 : used + 1,
       paid: !opts.checkpointNo && used + 1 > FREE_ATTEMPTS,
       checkpointNo: opts.checkpointNo,
+      batchKey: key,
       favSubject: fav,
       questionIds: qs.map((q) => q.id),
       optionOrder: Object.fromEntries(qs.map((q) => [q.id, shuffle(q.options.map((o) => o.id))])),

@@ -3134,3 +3134,19 @@
 .learn-app .detail-resources a span { flex: 1; min-width: 0; }
 .learn-app .next-week-note { margin: 14px 0 0; }
 .learn-app .next-week-note > svg { color: var(--green); flex: 0 0 auto; }
+
+/* batch switch chip (students in several batches) */
+.learn-app .batch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  border: 1px solid #cfcac0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--green-dark);
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.learn-app .batch-chip:hover { border-color: var(--green-dark); }

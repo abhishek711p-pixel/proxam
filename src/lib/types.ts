@@ -38,6 +38,7 @@ export interface User {
   activeSessionId: string;
   profile?: Profile;
   enrollments?: Enrollment[];
+  currentBatch?: string; // enrolment id the dashboard shows when the student has several batches
   testPurchases?: TestPurchase[]; // paid tests after the free ones
   masterclassSeats?: MasterclassSeat[];
   learn?: { done: Record<string, string>; plan?: PlanEdits }; // done: step id -> when it was marked done
@@ -218,6 +219,7 @@ export interface Result {
 export interface Attempt {
   paid?: boolean; // true for a ₹49 test after the free ones
   checkpointNo?: number; // batch progress test (every 14 days); does not use a free attempt
+  batchKey?: string; // checkpoint tests only: which batch ("cls|field")
   favSubject?: string; // PCM/PCB diagnostic: the subject the student picked (15 questions)
   id: string;
   userId: string;

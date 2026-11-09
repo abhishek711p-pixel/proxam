@@ -126,9 +126,26 @@ export function batchOfEnrollment(enr: Pick<Enrollment, "cls" | "field">, user?:
 }
 
 /** The student's batch: the active enrollment's, else what their profile would join by default. */
-export function batchOf(user: User): { cls: ClassLevel; field: BatchField } {
+/** Every batch the student is in right now (a student can join several, e.g. JEE + Boards PCM). */
+export function activeEnrollments(user: User): Enrollment[] {
   const now = Date.now();
-  const enr = (user.enrollments || []).find((e) => !e.expiresAt || new Date(e.expiresAt).getTime() > now);
+  return (user.enrollments || []).filter((e) => !e.expiresAt || new Date(e.expiresAt).getTime() > now);
+}
+
+/** The batch the dashboard shows: the one the student picked, else the one joined last. */
+export function currentEnrollment(user: User): Enrollment | undefined {
+  const list = activeEnrollments(user);
+  return list.find((e) => e.id === user.currentBatch) || list[list.length - 1];
+}
+
+/** "cls|field" of an enrolment, the key used for batch plans, tasks and checkpoint tests. */
+export function enrollmentKey(enr: Pick<Enrollment, "cls" | "field">, user?: User) {
+  const b = batchOfEnrollment(enr, user);
+  return `${b.cls}|${b.field}`;
+}
+
+export function batchOf(user: User): { cls: ClassLevel; field: BatchField } {
+  const enr = currentEnrollment(user);
   if (enr) return batchOfEnrollment(enr, user);
   const p = user.profile!;
   return { cls: p.cls, field: batchOptions(p.cls, p.field)[0] };

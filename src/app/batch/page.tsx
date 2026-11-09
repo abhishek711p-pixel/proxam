@@ -8,9 +8,10 @@ import { pageUser } from "@/lib/pageUser";
 import { getLang } from "@/lib/lang";
 import { userAttempts } from "@/lib/store";
 import { CLASSES, FIELDS, classLabel, type ClassLevel, type FieldId } from "@/lib/config";
-import { batchLabel, batchOfEnrollment, batchOptions, batchPrice, hasTracks, isTrack, isValidBatch, type BatchField } from "@/lib/batches";
+import { batchLabel, batchOfEnrollment, currentEnrollment, batchOptions, batchPrice, hasTracks, isTrack, isValidBatch, type BatchField } from "@/lib/batches";
 import { translator, type Key } from "@/lib/i18n";
-import { activeEnrollment, demoPayments } from "@/lib/batch";
+import { activeEnrollments, demoPayments } from "@/lib/batch";
+import OpenBatchButton from "./OpenBatchButton";
 
 export const metadata = {
   title: "Online Batches for Class 10, 11, 12 and Droppers (JEE, NEET, CUET)",
@@ -21,7 +22,8 @@ export const metadata = {
 export default async function BatchPage({ searchParams }: { searchParams: Promise<{ cls?: string; field?: string }> }) {
   const [user, lang, sp] = await Promise.all([pageUser(), getLang(), searchParams]);
   const t = translator(lang);
-  const enrolled = user ? activeEnrollment(user) : undefined;
+  // A student can be in several batches (e.g. JEE + Boards PCM). `owned` = the ones they are in now.
+  const mine = user ? activeEnrollments(user).map((e) => ({ e, b: batchOfEnrollment(e, user) })) : [];
   const hasResult = user ? (await userAttempts(user.id)).some((a) => a.status === "submitted") : false;
   const fmt = (s: string) => new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
@@ -34,11 +36,14 @@ export default async function BatchPage({ searchParams }: { searchParams: Promis
   if (qCls && qField && !isTrack(qField) && qField in FIELDS && hasTracks(qCls, qField as FieldId)) qField = batchOptions(qCls, qField as FieldId)[0];
   const options: BatchField[] = p ? batchOptions(p.cls, p.field) : [];
   const sel: { cls: ClassLevel; field: BatchField } | undefined = p
-    ? { cls: p.cls, field: qField && options.includes(qField) ? qField : options[0] }
+    ? { cls: p.cls, field: qField && options.includes(qField) ? qField : options.find((o) => !mine.some((m) => m.b.cls === p.cls && m.b.field === o)) || options[0] }
     : qCls && qField && isValidBatch(qCls, qField)
       ? { cls: qCls, field: qField }
       : undefined;
   const locked = Boolean(p);
+  // the batch on screen, if the student is already in it (then we show "you are in", not the pay button)
+  const enrolled = sel ? mine.find((m) => m.b.cls === sel.cls && m.b.field === sel.field)?.e : mine[mine.length - 1]?.e;
+  const isOpen = Boolean(enrolled && user && currentEnrollment(user)?.id === enrolled.id);
 
   const whys: [Key, Key][] = [
     ["bw_1_t", "bw_1_d"],
@@ -61,6 +66,7 @@ export default async function BatchPage({ searchParams }: { searchParams: Promis
       : { kind: "pay" as const };
   const price = sel ? batchPrice(sel.cls, sel.field) : 0;
   const enrolledBatch = enrolled ? batchOfEnrollment(enrolled, user!) : undefined;
+  const ownedField = (o: BatchField) => mine.some((m) => m.b.cls === p?.cls && m.b.field === o);
 
   const enrolledCard = enrolled && (
     <div className="rounded-xl bg-brand-800 p-6 text-white">
@@ -70,9 +76,13 @@ export default async function BatchPage({ searchParams }: { searchParams: Promis
         {t("joined_on")} {fmt(enrolled.paidAt)}
       </p>
       <p className="mt-3 text-brand-50">{hasResult ? t("enrolled_next") : t("enrolled_no_test")}</p>
-      <Link href={hasResult ? "/dashboard" : "/test"} className="btn mt-5 w-full bg-white text-brand-800">
-        {hasResult ? t("go_dashboard") : t("start_test")}
-      </Link>
+      {mine.length > 1 && !isOpen ? (
+        <OpenBatchButton id={enrolled.id} label={t("open_this_batch")} />
+      ) : (
+        <Link href={hasResult ? "/dashboard" : "/test"} className="btn mt-5 w-full bg-white text-brand-800">
+          {hasResult ? t("go_dashboard") : t("start_test")}
+        </Link>
+      )}
       {enrolled.mode === "demo" && <p className="mt-3 text-xs text-brand-100">{t("demo_pay")}</p>}
     </div>
   );
@@ -114,7 +124,7 @@ export default async function BatchPage({ searchParams }: { searchParams: Promis
                 {t("batch_profile_note")} <b>{classLabel(p.cls, lang)}, {FIELDS[p.field].label[lang]}</b>. {t("batch_profile_change")}
               </p>
             )}
-            {p && !enrolled && options.length > 1 && sel && (
+            {p && options.length > 1 && sel && (
               <div className="mt-5">
                 <p className="mb-2 text-sm font-semibold text-brand-900">{t("choose_batch")}</p>
                 <div className="flex flex-wrap gap-2">
@@ -128,11 +138,12 @@ export default async function BatchPage({ searchParams }: { searchParams: Promis
                         sel.field === o ? "border-brand-800 bg-brand-800 text-white" : "border-slate-400 bg-white text-brand-900 hover:border-brand-800"
                       }`}
                     >
-                      {batchLabel(p.cls, o, lang)} <span className="font-normal opacity-80">₹{batchPrice(p.cls, o)}</span>
+                      {batchLabel(p.cls, o, lang)}{" "}
+                      {ownedField(o) ? <span className="font-normal opacity-80">✓ {t("batch_joined")}</span> : <span className="font-normal opacity-80">₹{batchPrice(p.cls, o)}</span>}
                     </Link>
                   ))}
                 </div>
-                <p className="mt-2 text-sm text-slate-600">{t("track_help")}</p>
+                <p className="mt-2 text-sm text-slate-600">{mine.length ? t("track_help_more") : t("track_help")}</p>
               </div>
             )}
 

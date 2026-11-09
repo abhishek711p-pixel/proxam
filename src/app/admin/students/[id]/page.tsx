@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { scopeFor } from "@/lib/store";
-import { activeEnrollment } from "@/lib/batch";
+import { activeEnrollment, activeEnrollments } from "@/lib/batch";
 import { BOARDS, CLASSES, FIELDS, FREE_ATTEMPTS, classLabel } from "@/lib/config";
-import { batchLabel, batchOf, batchOptions, batchPrice } from "@/lib/batches";
+import { batchLabel, batchOf, batchOfEnrollment, batchOptions, batchPrice } from "@/lib/batches";
 import { learnSummary } from "@/lib/learn";
 import { chaptersFor, SUBJECT_NAME, type SubjectKey } from "@/lib/syllabus";
 import { attemptsLeft } from "@/lib/testEngine";
@@ -35,6 +35,9 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const chapters = bt ? chaptersFor(bt.cls, bt.field) : undefined;
   const batchOpts = p ? batchOptions(p.cls, p.field).map((f) => ({ value: f, label: batchLabel(p.cls, f), price: batchPrice(p.cls, f) })) : [];
   const pv = p && enr ? studentPlanView(db, u, enr) : undefined;
+  // a student can be in several batches; everything on this page is about the "current" one (open on their dashboard)
+  const mine = activeEnrollments(u).map((e) => ({ e, b: batchOfEnrollment(e, u) }));
+  const addable = batchOpts.filter((o) => !mine.some((m) => m.b.field === o.value));
 
   return (
     <div className="space-y-4">
@@ -93,8 +96,24 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           <p className="mt-2 text-sm text-slate-600">The student must fill the profile before joining a batch.</p>
         ) : (
           <div className="mt-3">
+            {mine.length > 1 && (
+              <ul className="mb-4 divide-y divide-slate-200 rounded-lg border border-slate-300 bg-white">
+                {mine.map(({ e, b }) => (
+                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                    <span>
+                      <b>{batchLabel(b.cls, b.field)}</b> · joined {when(e.paidAt)}, ₹{e.amount}
+                    </span>
+                    {e.id === enr?.id ? (
+                      <span className="pill bg-brand-100 text-brand-800">Shown below</span>
+                    ) : (
+                      <SmallAction id={u.id} action="current" extra={{ enr: e.id }} label="Show this batch" confirmText="Show this batch here? It also becomes the batch open on the student's dashboard." />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
             {!enr && <p className="mb-3 text-sm text-slate-600">Not in a batch. {batchOpts.map((o) => `${o.label}: ₹${o.price}`).join(" · ")}</p>}
-            <BatchControls id={u.id} enrolled={Boolean(enr)} start={enr ? day(enr.paidAt) : undefined} options={batchOpts} current={enr ? bt?.field : undefined} />
+            <BatchControls id={u.id} enrolled={Boolean(enr)} start={enr ? day(enr.paidAt) : undefined} options={batchOpts} addable={addable} current={enr ? bt?.field : undefined} />
           </div>
         )}
 

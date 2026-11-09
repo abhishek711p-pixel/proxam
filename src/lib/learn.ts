@@ -1,6 +1,6 @@
 import "server-only";
 import { FIELDS, totalQuestions } from "./config";
-import { batchFieldLabel, batchOf, blueprintField, TRACKS, isTrack } from "./batches";
+import { activeEnrollments, batchFieldLabel, batchLabel, batchOf, batchOfEnrollment, batchOptions, blueprintField, TRACKS, isTrack } from "./batches";
 import { chaptersFor, SUBJECT_NAME, subjectsFor, type Chapter, type SubjectKey } from "./syllabus";
 import { seatsOf, mcIsOver, fmtMcDate, fmtMcTime } from "./masterclass";
 import type { DB, Enrollment, Lang, MentorTask, PlanEdits, TaskKind, User } from "./types";
@@ -224,7 +224,9 @@ export function buildLearnData(db: DB, user: User, enr: Enrollment, lang: Lang, 
   const done = u.learn?.done || {};
   const today = istDay(now);
 
-  const attempts = db.attempts.filter((a) => a.userId === u.id && a.status === "submitted").sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || ""));
+  // checkpoint tests of this batch only (a student can be in several batches); diagnostic tests are shared
+  const myKey = batchKey(bt.cls, bt.field);
+  const attempts = db.attempts.filter((a) => a.userId === u.id && a.status === "submitted" && (!a.checkpointNo || (a.batchKey ?? myKey) === myKey)).sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || ""));
   const diagnostic = attempts.find((a) => !a.checkpointNo)?.result;
   const keys = subjectsFor(bt.field);
   const weak = (diagnostic?.weak || []).map((w) => subjectFromResult(w, keys)).filter((x): x is SubjectKey => Boolean(x));
@@ -404,6 +406,15 @@ export function buildLearnData(db: DB, user: User, enr: Enrollment, lang: Lang, 
     initials: p.name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join(""),
     classLine: `${p.cls === "dropper" ? (lang === "hi" ? "ड्रॉपर" : "Dropper") : `${lang === "hi" ? "कक्षा" : "Class"} ${p.cls}`} · ${p.board}`,
     fieldLabel: batchFieldLabel(bt.field, lang),
+    // a student can be in several batches (e.g. JEE + Boards PCM); the dashboard shows one, they can switch
+    batches: (() => {
+      const mine = activeEnrollments(u);
+      const owned = mine.map((e) => batchOfEnrollment(e, u));
+      return {
+        list: mine.map((e, i) => ({ id: e.id, label: batchLabel(owned[i].cls, owned[i].field, lang), current: e.id === enr.id })),
+        canJoinMore: batchOptions(p.cls, p.field).some((f) => !owned.some((o) => o.cls === p.cls && o.field === f)),
+      };
+    })(),
     todayLabel: fmt(now, lang, { weekday: "long", day: "numeric", month: "long" }),
     monthLabel: fmt(now, lang, { month: "long" }),
     greeting: hourIST < 12 ? "morning" : hourIST < 17 ? "afternoon" : "evening",

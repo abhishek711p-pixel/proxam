@@ -158,6 +158,14 @@ Keep the email plain (it is): no links or images, the same From address always. 
 - Guides live in `src/lib/guides.ts`. To add one: add an entry there, then copy one of the guide folders in `src/app` and change the slug.
 - Before launch: set `SITE_URL` to the real domain, add the site in Google Search Console, put the code in `GOOGLE_SITE_VERIFICATION`, and submit `https://YOUR-DOMAIN/sitemap.xml`.
 
+## Several batches per student
+A student can join more than one batch that fits their profile (Class 12 PCM: JEE and Boards PCM; PCMB: any of the four).
+- `/batch` shows every option; the ones already joined say "Joined", the rest can be bought.
+- The dashboard shows one batch at a time (`users.current_batch`); "My batches" in the sidebar switches. A new batch opens automatically.
+- Each batch has its own roadmap, exam date and checkpoint tests (`attempts.batch_key`). Ticked chapters and the diagnostic test are shared.
+- Admin student page: list of the student's batches, "Show this batch", "Add one more batch". Move / remove / start date act on the batch shown.
+- Known limit: the progress % in admin lists is for the batch open on the student's dashboard.
+
 ## Payments (Razorpay)
 Batches, the ₹49 extra test and masterclasses are paid with Razorpay Checkout (UPI, cards, netbanking, wallets).
 1. The server makes a Razorpay order with the price from our own price table (the browser cannot change it) and saves it in `payment_orders`.

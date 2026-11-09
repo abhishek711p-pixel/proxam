@@ -54,6 +54,7 @@ type Row = {
   e_paid: Date | null;
   e_cls: string | null;
   e_field: string | null;
+  e_all: string | null;
   latest: Result | null;
   attempts: string;
   best: string | null;
@@ -75,7 +76,8 @@ function where(f: Filters) {
   };
   if (f.cls) add("u.cls = ?", f.cls);
   // a Class 12 track (jee, neet, boards_*) filters by batch; anything else by the profile's field
-  if (f.field) add(isTrack(f.field) ? "e.field = ?" : "u.field = ?", f.field);
+  // (a student can be in several batches: any of them matches)
+  if (f.field) add(isTrack(f.field) ? "exists (select 1 from enrollments ex where ex.user_id = u.id and ex.expires_at is null and ex.field = ?)" : "u.field = ?", f.field);
   if (f.city) add("u.city_lc like ?", `%${f.city.toLowerCase()}%`);
   if (f.q) {
     const v = `%${f.q.toLowerCase()}%`;
@@ -106,7 +108,8 @@ const ORDER: Record<string, string> = {
 
 const FROM = `
   from users u
-  left join lateral (select id, mode, amount, paid_at, cls, field from enrollments e where e.user_id = u.id and e.expires_at is null limit 1) e on true
+  left join lateral (select id, mode, amount, paid_at, cls, field from enrollments e where e.user_id = u.id and e.expires_at is null
+                     order by (e.id = u.current_batch) desc, e.paid_at desc limit 1) e on true
   left join lateral (select percentage, data->'result' as result from attempts a where a.user_id = u.id and a.status = 'submitted' order by submitted_at desc limit 1) la on true
   left join lateral (select status, slot_start from bookings b where b.user_id = u.id and b.status <> 'cancelled' order by slot_start desc limit 1) lb on true`;
 
@@ -136,7 +139,12 @@ function toRow(r: Row): StudentRow {
     callStatus: (r.call_status as StudentRow["callStatus"]) || "none",
     callAt: iso(r.call_at),
     batch: !r.e_mode ? "none" : r.e_mode === "demo" ? "demo" : r.e_mode === "admin" ? "admin" : "active",
-    batchName: r.e_mode ? nameOfBatch(r.e_cls || p.cls, r.e_field || p.field) : undefined,
+    batchName: r.e_mode
+      ? (r.e_all || `${r.e_cls || p.cls}|${r.e_field || p.field}`)
+          .split(",")
+          .map((k) => nameOfBatch(k.split("|")[0] || p.cls, k.split("|")[1] || p.field))
+          .join(" + ")
+      : undefined,
     progress: r.e_mode ? (r.progress_pct ?? undefined) : undefined,
     behind: r.e_mode ? (r.behind_steps ?? undefined) : undefined,
     lastActive: iso(r.last_active),
@@ -154,6 +162,8 @@ export async function studentPage(f: Filters, perPage = PAGE) {
   const rows = await q<Row>(
     `select u.id, u.mobile, u.email, u.created_at, u.profile, u.progress_pct, u.behind_steps, u.last_active,
        e.mode e_mode, e.amount e_amount, e.paid_at e_paid, e.cls e_cls, e.field e_field, la.result latest,
+       (select string_agg(coalesce(e2.cls, u.cls) || '|' || coalesce(e2.field, u.field), ',' order by e2.paid_at) from enrollments e2
+          where e2.user_id = u.id and e2.expires_at is null) e_all,
        (select count(*) from attempts a where a.user_id = u.id) attempts,
        (select max(percentage) from attempts a where a.user_id = u.id and a.status = 'submitted') best,
        lb.status call_status, lb.slot_start call_at,
@@ -190,7 +200,7 @@ export async function funnel() {
        (select count(distinct user_id) from attempts where status = 'submitted') submitted,
        (select count(distinct user_id) from bookings where status <> 'cancelled') booked,
        (select count(distinct user_id) from bookings where status = 'attended') attended,
-       (select count(*) from enrollments where expires_at is null) paid,
+       (select count(distinct user_id) from enrollments where expires_at is null) paid,
        (select count(distinct user_id) from test_purchases) bought`,
   ))!;
   const n = (k: string) => Number(r[k] || 0);

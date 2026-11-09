@@ -22,10 +22,12 @@ import {
   Headphones,
   Home,
   LifeBuoy,
+  Layers,
   LogOut,
   Menu,
   MessageCircleQuestion,
   Play,
+  Plus,
   Presentation,
   RotateCcw,
   Send,
@@ -1174,6 +1176,40 @@ export default function LearnApp({ data: d, initialTab }: { data: LearnData; ini
                 {badge ? <i>{badge}</i> : null}
               </button>
             ))}
+            {(d.batches.list.length > 1 || d.batches.canJoinMore) && (
+              <>
+                <p className="nav-label" style={{ marginTop: 22 }}>
+                  {t("myBatches")}
+                </p>
+                {d.batches.list.length > 1 &&
+                  d.batches.list.map((b) => (
+                    <button
+                      key={b.id}
+                      className={b.current ? "nav-item active" : "nav-item"}
+                      aria-current={b.current ? "true" : undefined}
+                      disabled={b.current}
+                      onClick={() =>
+                        fetch("/api/batch/switch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: b.id }) })
+                          .then(() => {
+                            setMenuOpen(false);
+                            setTab("home");
+                            router.refresh();
+                          })
+                          .catch(() => {})
+                      }
+                    >
+                      <Layers size={19} strokeWidth={1.8} />
+                      <span>{b.label}</span>
+                    </button>
+                  ))}
+                {d.batches.canJoinMore && (
+                  <Link href="/batch" className="nav-item">
+                    <Plus size={19} strokeWidth={1.8} />
+                    <span>{t("joinAnother")}</span>
+                  </Link>
+                )}
+              </>
+            )}
             <p className="nav-label" style={{ marginTop: 22 }}>
               {t("more")}
             </p>
@@ -1254,6 +1290,11 @@ export default function LearnApp({ data: d, initialTab }: { data: LearnData; ini
                     {t(`good${d.greeting}` as "goodmorning")}, {d.firstName}.
                   </h1>
                   <p>{d.prep.pct === 0 ? t("welcomeNew") : t("welcomeBack")}</p>
+                  {d.batches.list.length > 1 && (
+                    <button type="button" className="batch-chip" onClick={() => setMenuOpen(true)}>
+                      <Layers size={15} strokeWidth={2} /> {d.batches.list.find((b) => b.current)?.label} · {t("switchBatch")}
+                    </button>
+                  )}
                 </div>
                 <div className="streak">
                   <span>

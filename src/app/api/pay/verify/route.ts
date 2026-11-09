@@ -16,6 +16,6 @@ export async function POST(req: Request) {
   if (!checkoutSignatureOk(orderId, paymentId, signature)) return fail("Payment could not be verified. If money was taken, it will be refunded or added within a few minutes.");
 
   const r = await fulfillOrder(orderId, paymentId);
-  if (r.status === "needs_refund") return fail("You already have a batch. This payment will be refunded to you.");
+  if (r.status === "needs_refund") return fail("You are already in this batch. This payment will be refunded to you.");
   return ok({ next: nextAfter(r.kind) });
 }

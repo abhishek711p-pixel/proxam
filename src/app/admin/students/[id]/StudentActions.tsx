@@ -85,12 +85,14 @@ export function BatchControls({
   enrolled,
   start,
   options,
+  addable = [],
   current,
 }: {
   id: string;
   enrolled: boolean;
   start?: string;
   options: BatchOpt[]; // batches this student can be in (Class 12 Science: JEE / NEET / Boards)
+  addable?: BatchOpt[]; // of those, the ones the student is not in yet (a student can be in several)
   current?: string;
 }) {
   const { act, busy, msg } = useAct(id);
@@ -143,10 +145,11 @@ export function BatchControls({
       <button className="btn-ghost btn-sm" disabled={busy} onClick={() => act("start", { date })}>
         Change start date
       </button>
-      <button className="btn-ghost btn-sm text-accent-700" disabled={busy} onClick={() => act("unenroll", {}, "Remove this student from the batch? They lose the learning dashboard. Their progress is kept.")}>
+      <button className="btn-ghost btn-sm text-accent-700" disabled={busy} onClick={() => act("unenroll", {}, "Remove this student from this batch? Their other batches stay. Their progress is kept.")}>
         Remove from batch
       </button>
       {msg && <span className="text-sm text-accent-700">{msg}</span>}
+      {addable.length > 0 && <AddAnother id={id} options={addable} />}
     </div>
   );
 }
@@ -196,5 +199,36 @@ export function SmallAction({ id, action, label, extra = {}, confirmText, danger
       </button>
       {msg && <span className="text-xs text-accent-700">{msg}</span>}
     </span>
+  );
+}
+
+/** Add the student to one more batch (they keep the ones they have). */
+function AddAnother({ id, options }: { id: string; options: BatchOpt[] }) {
+  const { act, busy, msg } = useAct(id);
+  const [batch, setBatch] = useState(options[0]?.value || "");
+  const [amount, setAmount] = useState(String(options[0]?.price ?? 0));
+  return (
+    <div className="mt-3 flex w-full flex-wrap items-end gap-2 border-t border-slate-200 pt-3">
+      <label>
+        <span className="label">Add one more batch</span>
+        <Select
+          ariaLabel="Another batch"
+          value={batch}
+          options={options.map((o) => ({ value: o.value, label: `${o.label} (₹${o.price})` }))}
+          onChange={(v) => {
+            setBatch(v);
+            setAmount(String(options.find((o) => o.value === v)?.price ?? amount));
+          }}
+        />
+      </label>
+      <label>
+        <span className="label">Amount received (₹)</span>
+        <input className="input w-36" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} />
+      </label>
+      <button className="btn-primary btn-sm" disabled={busy} onClick={() => act("enroll", { amount: Number(amount), batch }, "Add this student to one more batch? Their current batches stay.")}>
+        Add batch
+      </button>
+      {msg && <span className="text-sm text-accent-700">{msg}</span>}
+    </div>
   );
 }

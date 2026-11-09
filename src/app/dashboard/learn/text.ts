@@ -4,6 +4,9 @@ import type { Lang } from "@/lib/types";
 const T = {
   learn: { en: "Learn", hi: "पढ़ाई" },
   more: { en: "More", hi: "और" },
+  myBatches: { en: "My batches", hi: "मेरे बैच" },
+  joinAnother: { en: "Join another batch", hi: "एक और बैच जॉइन करो" },
+  switchBatch: { en: "Switch", hi: "बदलो" },
   home: { en: "Home", hi: "होम" },
   roadmap: { en: "My roadmap", hi: "मेरा रोडमैप" },
   roadmapShort: { en: "Roadmap", hi: "रोडमैप" },

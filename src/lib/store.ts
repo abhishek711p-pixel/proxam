@@ -1,5 +1,5 @@
 import "server-only";
-import { batchOf } from "./batches";
+import { activeEnrollments, batchOf, batchOfEnrollment } from "./batches";
 import { q, q1, tx, isUniqueViolation, type Client } from "./pg";
 import { newId, nowISO } from "./ids";
 import type {
@@ -46,6 +46,7 @@ type UserRow = {
   notif_read: string[];
   progress_pct: number | null;
   behind_steps: number | null;
+  current_batch: string | null;
   enrollments: Record<string, unknown>[];
   test_purchases: Record<string, unknown>[];
   masterclass_seats: Record<string, unknown>[];
@@ -53,7 +54,7 @@ type UserRow = {
 };
 
 const USER_SELECT = `
-  select u.id, u.mobile, u.email, u.created_at, u.session_id, u.profile, u.learn_done, u.learn_plan, u.notif_read, u.progress_pct, u.behind_steps,
+  select u.id, u.mobile, u.email, u.created_at, u.session_id, u.profile, u.learn_done, u.learn_plan, u.notif_read, u.progress_pct, u.behind_steps, u.current_batch,
     coalesce((select json_agg(e order by e.paid_at) from enrollments e where e.user_id = u.id), '[]') as enrollments,
     coalesce((select json_agg(t order by t.paid_at) from test_purchases t where t.user_id = u.id), '[]') as test_purchases,
     coalesce((select json_agg(s order by s.paid_at) from masterclass_seats s where s.user_id = u.id), '[]') as masterclass_seats,
@@ -81,6 +82,7 @@ function toUser(r: UserRow): User {
           field: e.field,
         }) as unknown as Enrollment,
     ),
+    currentBatch: r.current_batch || undefined,
     testPurchases: r.test_purchases.map((t) => clean({ id: t.id, amount: t.amount, paidAt: iso(t.paid_at), mode: t.mode }) as unknown as TestPurchase),
     masterclassSeats: r.masterclass_seats.map(
       (s) => clean({ masterclassId: s.masterclass_id, amount: s.amount, paidAt: iso(s.paid_at), mode: s.mode }) as unknown as MasterclassSeat,
@@ -219,6 +221,7 @@ export async function addEnrollment(userId: string, e: Enrollment) {
       e.cls || null,
       e.field || null,
     ]);
+    await q(`update users set current_batch = $2 where id = $1`, [userId, e.id]); // a new batch opens on the dashboard
     return true;
   } catch (err) {
     if (isUniqueViolation(err)) return false;
@@ -226,16 +229,37 @@ export async function addEnrollment(userId: string, e: Enrollment) {
   }
 }
 
-export async function endEnrollment(userId: string) {
-  await q(`update enrollments set expires_at = now() where user_id = $1 and expires_at is null`, [userId]);
+/** Take the student out of one batch (their other batches stay). */
+export async function endEnrollment(userId: string, enrollmentId: string) {
+  await q(`update enrollments set expires_at = now() where user_id = $1 and id = $2 and expires_at is null`, [userId, enrollmentId]);
+  await q(`update users set current_batch = null where id = $1 and current_batch = $2`, [userId, enrollmentId]);
 }
 
-export async function setEnrollmentStart(userIds: string[], paidAt: string) {
-  await q(`update enrollments set paid_at = $2 where user_id = any($1) and expires_at is null`, [userIds, paidAt]);
+/** Which of their batches the student sees on the dashboard. */
+export async function setCurrentBatch(userId: string, enrollmentId: string) {
+  await q(`update users set current_batch = $2 where id = $1`, [userId, enrollmentId]);
 }
 
-export async function setEnrollmentTrack(userId: string, cls: string, field: string) {
-  await q(`update enrollments set cls = $2, field = $3 where user_id = $1 and expires_at is null`, [userId, cls, field]);
+/** New roadmap start date. With `batch`, only that batch's enrolment changes (a student can be in several). */
+export async function setEnrollmentStart(userIds: string[], paidAt: string, batch?: { cls: string; field: string }) {
+  if (batch)
+    await q(
+      `update enrollments e set paid_at = $2 from users u
+       where e.user_id = u.id and e.user_id = any($1) and e.expires_at is null and coalesce(e.cls, u.cls) = $3 and coalesce(e.field, u.field) = $4`,
+      [userIds, paidAt, batch.cls, batch.field],
+    );
+  else await q(`update enrollments set paid_at = $2 where user_id = any($1) and expires_at is null`, [userIds, paidAt]);
+}
+
+/** Move one enrolment to another batch (e.g. JEE to Boards PCM). False if the student is already in that batch. */
+export async function setEnrollmentTrack(userId: string, enrollmentId: string, cls: string, field: string) {
+  try {
+    await q(`update enrollments set cls = $3, field = $4 where user_id = $1 and id = $2 and expires_at is null`, [userId, enrollmentId, cls, field]);
+    return true;
+  } catch (err) {
+    if (isUniqueViolation(err)) return false;
+    throw err;
+  }
 }
 
 export async function addTestPurchase(userId: string, t: TestPurchase, paymentId?: string) {
@@ -340,6 +364,7 @@ const attemptCols = (a: Attempt) => [
   a.submittedAt || null,
   a.result ? a.result.percentage : null,
   j(a),
+  a.batchKey || null,
 ];
 
 export async function getAttempt(id: string) {
@@ -355,8 +380,8 @@ export async function userAttempts(userId: string) {
 export async function insertAttempt(a: Attempt) {
   try {
     await q(
-      `insert into attempts (id, user_id, status, attempt_no, checkpoint_no, started_at, expires_at, submitted_at, percentage, data)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      `insert into attempts (id, user_id, status, attempt_no, checkpoint_no, started_at, expires_at, submitted_at, percentage, data, batch_key)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       attemptCols(a),
     );
     return true;
@@ -616,16 +641,19 @@ export async function noticeCount() {
 /** Notifications meant for this student (latest 50). */
 export async function noticesForUser(u: User, enrolled: boolean) {
   const p = u.profile;
-  const b = p ? batchOf(u) : undefined; // batch notices go by the batch (Class 12 JEE / NEET / Boards), not the profile
+  // batch notices go by the batches (Class 12 JEE / NEET / Boards), not the profile; a student can be in several
+  const bs = p ? activeEnrollments(u).map((e) => batchOfEnrollment(e, u)) : [];
   const rows = await q<DocRow>(
     `select data from notifications where
        (aud_type = 'student' and aud_user = $1)
        or (created_at >= $2 and $3::text is not null and (
             aud_type = 'all'
          or (aud_type = 'class' and aud_cls = $3)
-         or (aud_type = 'batch' and $5 and (aud_cls is null or aud_cls = $6) and (aud_field is null or aud_field = $4))))
+         or (aud_type = 'batch' and $5 and exists (
+              select 1 from unnest($6::text[], $4::text[]) as b(c, f)
+              where (aud_cls is null or aud_cls = b.c) and (aud_field is null or aud_field = b.f)))))
      order by created_at desc limit 50`,
-    [u.id, u.createdAt, p?.cls || null, b?.field || null, enrolled, b?.cls || null],
+    [u.id, u.createdAt, p?.cls || null, bs.map((b) => b.field), enrolled, bs.map((b) => b.cls)],
   );
   return rows.map((r) => r.data as unknown as Notice);
 }

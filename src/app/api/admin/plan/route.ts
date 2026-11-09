@@ -235,7 +235,7 @@ export async function POST(req: Request) {
       if (student && !activeEnrollment(student)) return fail("This student is not in a batch.");
       const ids = student ? [student.id] : await batchUserIds(cls, field);
       if (!ids.length) return fail("No students in this batch.");
-      await setEnrollmentStart(ids, iso);
+      await setEnrollmentStart(ids, iso, student ? batchOf(student) : { cls, field });
       if (student) plan().moved = {};
       else await clearMovedSteps(ids);
       plan().endDate = end || undefined;

@@ -121,11 +121,12 @@ export async function fulfillOrder(orderId: string, paymentId: string): Promise<
           `insert into enrollments (id, user_id, amount, paid_at, mode, payment_id, cls, field) values ($1,$2,$3,now(),'razorpay',$4,$5,$6)`,
           [newId("e_"), o.user_id, o.amount, paymentId, o.cls, o.ref],
         );
+        await c.query(`update users set current_batch = (select id from enrollments where payment_id = $1) where id = $2`, [paymentId, o.user_id]);
       } catch (e) {
         if (!isUniqueViolation(e)) throw e;
         await c.query("rollback to savepoint enrol");
         await c.query(`update payment_orders set status = 'needs_refund' where id = $1`, [o.id]);
-        console.error("[razorpay] paid twice for a batch, refund needed", o.id, paymentId);
+        console.error("[razorpay] paid twice for the same batch, refund needed", o.id, paymentId);
         return { kind: o.kind, status: "needs_refund" };
       }
     } else if (o.kind === "test") {

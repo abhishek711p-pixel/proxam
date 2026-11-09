@@ -1,9 +1,12 @@
 import type { User } from "./types";
+import { activeEnrollments, currentEnrollment } from "./batches";
 
+/** The batch the student is working in now (the one they picked if they have several). */
 export function activeEnrollment(user: User) {
-  const now = Date.now();
-  return (user.enrollments || []).find((e) => !e.expiresAt || new Date(e.expiresAt).getTime() > now);
+  return currentEnrollment(user);
 }
+
+export { activeEnrollments };
 
 export function paymentsEnabled() {
   return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
