@@ -47,7 +47,7 @@ export async function payWithRazorpay(order: PayOrder): Promise<PayResult> {
       name: order.name,
       description: order.description,
       prefill: order.prefill,
-      theme: { color: "#3a4a2f" },
+      theme: { color: "#1b3728" },
       handler: (r: RzpResponse) => resolve(r),
       modal: { ondismiss: () => resolve(null), confirm_close: true },
     });
