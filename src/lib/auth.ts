@@ -12,8 +12,14 @@ const LOGGED_IN_HINT = "px_in";
 const ADMIN_COOKIE = "adm";
 const SESSION_DAYS = 30;
 
+/** Live site (not `npm run dev`). ALLOW_DEV_OTP=1 relaxes the checks for a local `npm start` test. */
+const LIVE = process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_OTP !== "1";
+
 function secret() {
-  return process.env.AUTH_SECRET || "dev-only-secret-change-me";
+  const s = process.env.AUTH_SECRET;
+  // Without a real secret anyone could forge a login cookie, so the live site refuses to run without one.
+  if (!s && LIVE) throw new Error("AUTH_SECRET is not set. Add a long random value in the hosting settings.");
+  return s || "dev-only-secret-change-me";
 }
 
 function sign(value: string) {
@@ -62,6 +68,11 @@ export async function createOtp(purpose: "login", email: string) {
   const code = String(crypto.randomInt(100000, 1000000));
   await putOtp({ key, hash: hash(code), expiresAt: now + 5 * 60_000, tries: 0, sentAt: now });
 
+  // Live site without an email service: never show the code on screen (anyone could log into any account).
+  if (!emailEnabled() && LIVE) {
+    await deleteOtp(key);
+    return { ok: false as const, error: "Login by email is not set up yet. Please try again later." };
+  }
   if (emailEnabled()) {
     const r = await sendEmail({ to: email, ...otpEmail(code) });
     if (!r.ok) {
@@ -154,7 +165,15 @@ function adminPassword() {
   return process.env.ADMIN_PASSWORD || "admin123";
 }
 
+/** On the live site the admin password must be set and strong; otherwise admin login stays closed. */
+export function adminPasswordProblem() {
+  const p = process.env.ADMIN_PASSWORD || "";
+  if (LIVE && (p.length < 10 || p === "admin123")) return "Admin login is closed: set a strong ADMIN_PASSWORD (10+ characters) in the hosting settings.";
+  return undefined;
+}
+
 export async function adminLogin(password: string) {
+  if (adminPasswordProblem()) return false;
   if (!safeEqual(hash(password), hash(adminPassword()))) return false;
   const value = `admin.${Date.now()}`;
   (await cookies()).set(ADMIN_COOKIE, `${value}.${sign(value)}`, {

@@ -2,7 +2,11 @@ import "server-only";
 import crypto from "crypto";
 
 // Encrypts small secrets (like the Google refresh token) before they are saved to the database.
-const key = () => crypto.createHash("sha256").update(process.env.AUTH_SECRET || "dev-only-secret-change-me").digest();
+const key = () => {
+  const s = process.env.AUTH_SECRET;
+  if (!s && process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_OTP !== "1") throw new Error("AUTH_SECRET is not set.");
+  return crypto.createHash("sha256").update(s || "dev-only-secret-change-me").digest();
+};
 
 export function seal(plain: string) {
   const iv = crypto.randomBytes(12);
