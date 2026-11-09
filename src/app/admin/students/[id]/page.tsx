@@ -88,7 +88,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           <h2 className="text-lg">Batch{enr && bt ? `: ${batchLabel(bt.cls, bt.field)}` : ""}</h2>
           {enr && (
             <p className="text-sm text-slate-600">
-              Joined {when(enr.paidAt)}, ₹{enr.amount} {enr.mode === "demo" ? "(demo)" : enr.mode === "admin" ? "(added by admin)" : "(paid)"}
+              Joined {when(enr.paidAt)}, ₹{enr.amount} {enr.mode === "demo" ? "(demo)" : enr.mode === "admin" ? (enr.amount === 0 ? "(free, given by admin)" : "(added by admin)") : "(paid)"}
             </p>
           )}
         </div>
@@ -101,7 +101,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                 {mine.map(({ e, b }) => (
                   <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                     <span>
-                      <b>{batchLabel(b.cls, b.field)}</b> · joined {when(e.paidAt)}, ₹{e.amount}
+                      <b>{batchLabel(b.cls, b.field)}</b> · joined {when(e.paidAt)}, {e.mode === "admin" && e.amount === 0 ? "free (given by admin)" : `₹${e.amount}`}
                     </span>
                     {e.id === enr?.id ? (
                       <span className="pill bg-brand-100 text-brand-800">Shown below</span>

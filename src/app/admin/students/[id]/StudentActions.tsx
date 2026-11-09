@@ -121,6 +121,9 @@ export function BatchControls({
         <button className="btn-primary btn-sm" disabled={busy} onClick={() => act("enroll", { amount: Number(amount), batch }, "Add this student to this batch?")}>
           Add to batch
         </button>
+        <button className="btn-accent btn-sm" disabled={busy} onClick={() => act("enroll", { batch, gift: true }, "Give this batch FREE (giveaway)? ₹0 is recorded and the student gets a notification.")}>
+          🎁 Give free (giveaway)
+        </button>
         {msg && <span className="text-sm text-accent-700">{msg}</span>}
       </div>
     );
@@ -227,6 +230,9 @@ function AddAnother({ id, options }: { id: string; options: BatchOpt[] }) {
       </label>
       <button className="btn-primary btn-sm" disabled={busy} onClick={() => act("enroll", { amount: Number(amount), batch }, "Add this student to one more batch? Their current batches stay.")}>
         Add batch
+      </button>
+      <button className="btn-accent btn-sm" disabled={busy} onClick={() => act("enroll", { batch, gift: true }, "Give this batch FREE (giveaway)? ₹0 is recorded and the student gets a notification.")}>
+        🎁 Give free
       </button>
       {msg && <span className="text-sm text-accent-700">{msg}</span>}
     </div>

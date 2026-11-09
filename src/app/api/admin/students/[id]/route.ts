@@ -1,4 +1,4 @@
-import { batchOf, batchOfEnrollment, batchOptions, batchPrice, type BatchField } from "@/lib/batches";
+import { batchLabel, batchOf, batchOfEnrollment, batchOptions, batchPrice, type BatchField } from "@/lib/batches";
 import { isAdmin } from "@/lib/auth";
 import { activeEnrollment, activeEnrollments } from "@/lib/batch";
 import { BOARDS, CLASSES, FIELDS, priceFor, type ClassLevel, type FieldId } from "@/lib/config";
@@ -13,6 +13,7 @@ import {
   endEnrollment,
   getTask,
   getUser,
+  insertNotice,
   removeSeat,
   setEnrollmentStart,
   setEnrollmentTrack,
@@ -66,13 +67,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       break;
     }
     case "enroll": {
-      if (!p) return fail("The student must fill the profile first.");
+      // Also used for giveaways (gift: free batch). The student must have logged in and filled the profile.
+      if (!p) return fail("This student has not finished signing up (profile). Ask them to log in on proxam.in and fill it first.");
       const opts = batchOptions(p.cls, p.field);
       const batch = (x.batch ? str("batch") : opts[0]) as BatchField;
       if (!opts.includes(batch)) return fail("Pick a batch this student can join.");
       if (activeEnrollments(u).some((e) => batchOfEnrollment(e, u).field === batch)) return fail("Already in this batch.");
       const amount = Number.isFinite(Number(x.amount)) ? Math.max(0, Math.round(Number(x.amount))) : batchPrice(p.cls, batch);
-      if (!(await addEnrollment(u.id, { id: newId("e_"), amount, paidAt: nowISO(), mode: "admin", cls: p.cls, field: batch }))) return fail("Already in this batch.");
+      const gift = Boolean(x.gift);
+      if (!(await addEnrollment(u.id, { id: newId("e_"), amount: gift ? 0 : amount, paidAt: nowISO(), mode: "admin", cls: p.cls, field: batch }))) return fail("Already in this batch.");
+      if (gift) {
+        const name = batchLabel(p.cls, batch, p.language === "hi" ? "hi" : "en");
+        await insertNotice({
+          id: newId("n_"),
+          title: p.language === "hi" ? "बधाई! तुम्हें फ्री बैच मिला 🎉" : "Congratulations! You got a free batch 🎉",
+          body: p.language === "hi" ? `${name} अब तुम्हारा है। अपना रोडमैप डैशबोर्ड पर खोलो।` : `${name} is now yours. Open your dashboard to see your roadmap.`,
+          link: "/dashboard",
+          audience: { type: "student", userId: u.id },
+          recipients: 1,
+          createdAt: nowISO(),
+        });
+      }
       break;
     }
     case "current": {
