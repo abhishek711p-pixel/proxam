@@ -10,7 +10,7 @@ import { userAttempts } from "@/lib/store";
 import { CLASSES, FIELDS, classLabel, type ClassLevel, type FieldId } from "@/lib/config";
 import { batchLabel, batchOfEnrollment, batchOptions, batchPrice, hasTracks, isTrack, isValidBatch, type BatchField } from "@/lib/batches";
 import { translator, type Key } from "@/lib/i18n";
-import { activeEnrollment, paymentsEnabled } from "@/lib/batch";
+import { activeEnrollment, demoPayments } from "@/lib/batch";
 
 export const metadata = {
   title: "Online Batches for Class 10, 11, 12 and Droppers (JEE, NEET, CUET)",
@@ -86,7 +86,7 @@ export default async function BatchPage({ searchParams }: { searchParams: Promis
             {action.label}, ₹{price}
           </Link>
         ) : (
-          <JoinButton lang={lang} demo={!paymentsEnabled()} price={price} batch={sel.field} />
+          <JoinButton lang={lang} demo={demoPayments()} price={price} batch={sel.field} />
         )}
         <p className="mt-3 text-center text-xs text-slate-500">{t("pay_methods")}</p>
         <p className="mt-1 text-center text-xs text-slate-500">{t("batch_terms")}</p>
@@ -213,7 +213,7 @@ export default async function BatchPage({ searchParams }: { searchParams: Promis
                 </Link>
               ) : (
                 <div className="flex-1">
-                  <JoinButton lang={lang} demo={!paymentsEnabled()} price={price} batch={sel!.field} compact />
+                  <JoinButton lang={lang} demo={demoPayments()} price={price} batch={sel!.field} compact />
                 </div>
               )}
             </div>

@@ -6,7 +6,7 @@ import { pageUser } from "@/lib/pageUser";
 import { getLang } from "@/lib/lang";
 import { userAttempts } from "@/lib/store";
 import { EXTRA_TEST_PRICE, FIELDS, favouriteOptions, totalQuestions } from "@/lib/config";
-import { paymentsEnabled } from "@/lib/batch";
+import { demoPayments } from "@/lib/batch";
 import { translator, type Key } from "@/lib/i18n";
 import { attemptsLeft, finalizeFor } from "@/lib/testEngine";
 
@@ -67,7 +67,7 @@ export default async function TestIntro() {
               <h2 className="mt-1 text-2xl">{t("extra_test_t")}</h2>
               <p className="mt-1 text-slate-600">{t("extra_test_d")}</p>
               <div className="mt-4">
-                <StartButton lang={lang} pay demo={!paymentsEnabled()} sections={f.sections} fav={fav} />
+                <StartButton lang={lang} pay demo={demoPayments()} sections={f.sections} fav={fav} />
               </div>
               <Link href="/dashboard" className="mt-3 inline-block text-sm font-semibold text-brand-700 underline underline-offset-4">
                 {t("go_dashboard")}

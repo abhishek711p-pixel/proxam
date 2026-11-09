@@ -1,5 +1,6 @@
 import { currentUser } from "@/lib/auth";
-import { paymentsEnabled } from "@/lib/batch";
+import { demoPayments, paymentsEnabled } from "@/lib/batch";
+import { createOrder } from "@/lib/payments";
 import { EXTRA_TEST_PRICE } from "@/lib/config";
 import { newId, nowISO } from "@/lib/ids";
 import { addTestPurchase, hit, userAttempts } from "@/lib/store";
@@ -17,10 +18,14 @@ export async function POST() {
   if (!(await hit(`buy:${user.id}`, 5, 60_000))) return fail("Please wait a moment and try again.");
 
   if (paymentsEnabled()) {
-    // TODO (Phase 2): create a Razorpay order for EXTRA_TEST_PRICE, open Checkout,
-    // verify the signature in a webhook, and only then add the purchase below with mode "razorpay".
-    return fail("Online payment is not connected yet.");
+    try {
+      const pay = await createOrder(user, { kind: "test", amount: EXTRA_TEST_PRICE, description: "One more Proxam test" });
+      return ok({ pay });
+    } catch (e) {
+      return fail((e as Error).message);
+    }
   }
+  if (!demoPayments()) return fail("Online payment is being set up. Please try again soon.");
 
   // Demo mode: no gateway configured, add the test without charging.
   await addTestPurchase(user.id, { id: newId("tp_"), amount: EXTRA_TEST_PRICE, paidAt: nowISO(), mode: "demo" });

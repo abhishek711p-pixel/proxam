@@ -5,7 +5,7 @@ import McTicket from "@/components/masterclass/McTicket";
 import McDate from "@/components/masterclass/McDate";
 import McBookButton from "@/components/masterclass/McBookButton";
 import { pageUser } from "@/lib/pageUser";
-import { paymentsEnabled } from "@/lib/batch";
+import { demoPayments } from "@/lib/batch";
 import { BRAND, CLASSES, classLabel } from "@/lib/config";
 import { allMasterclasses } from "@/lib/store";
 import { getLang } from "@/lib/lang";
@@ -22,7 +22,7 @@ export default async function MasterclassPage() {
   const [user, lang] = await Promise.all([pageUser(), getLang()]);
   const t = translator(lang);
   const mcs = await allMasterclasses();
-  const demo = !paymentsEnabled();
+  const demo = demoPayments();
   const fresh = user;
   const p = fresh?.profile;
 

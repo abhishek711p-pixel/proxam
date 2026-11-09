@@ -158,6 +158,16 @@ Keep the email plain (it is): no links or images, the same From address always. 
 - Guides live in `src/lib/guides.ts`. To add one: add an entry there, then copy one of the guide folders in `src/app` and change the slug.
 - Before launch: set `SITE_URL` to the real domain, add the site in Google Search Console, put the code in `GOOGLE_SITE_VERIFICATION`, and submit `https://YOUR-DOMAIN/sitemap.xml`.
 
+## Payments (Razorpay)
+Batches, the ₹49 extra test and masterclasses are paid with Razorpay Checkout (UPI, cards, netbanking, wallets).
+1. The server makes a Razorpay order with the price from our own price table (the browser cannot change it) and saves it in `payment_orders`.
+2. Checkout opens. After payment, `/api/pay/verify` checks the signature and only then adds the batch / test / seat (mode `razorpay`, with the payment id).
+3. `/api/pay/webhook` does the same if the student closes the tab first. Both together never give the item twice.
+4. If a student somehow pays for a second batch, the order is marked `needs_refund` (refund it from the Razorpay dashboard).
+
+Setup: put `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` in Vercel, run `npm run db:setup` once (adds `payment_orders`), redeploy. Start with test keys (`rzp_test_`), switch to live keys after KYC. In Razorpay settings keep payment capture on **Automatic**.
+Without keys: demo mode on your laptop, buying closed on the live site.
+
 ## Not done yet (be clear about this before launch)
 
 - **SMS, Google Calendar, Zoom:** code is ready (see above) but needs your keys. Untested against the live services until you add them, so do one real test booking first.

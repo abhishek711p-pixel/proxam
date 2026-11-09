@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { t } from "@/lib/i18n";
+import { payWithRazorpay } from "@/lib/checkout";
 import type { Lang } from "@/lib/types";
 
-/** Books a seat (₹1 in demo mode) and opens the masterclass page. */
+/** Books a seat (Razorpay, or free in demo mode) and opens the masterclass page. */
 export default function McBookButton({ id, price, lang, demo, full = false }: { id: string; price: number; lang: Lang; demo: boolean; full?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -19,6 +20,13 @@ export default function McBookButton({ id, price, lang, demo, full = false }: { 
     if (!r?.ok) {
       setBusy(false);
       return setError(r?.error || t(lang, "error_generic"));
+    }
+    if (r.pay) {
+      const p = await payWithRazorpay(r.pay);
+      if (!p.ok) {
+        setBusy(false);
+        return setError(p.cancelled ? "" : p.error);
+      }
     }
     router.push("/masterclass");
     router.refresh();

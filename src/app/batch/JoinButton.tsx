@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { t } from "@/lib/i18n";
+import { payWithRazorpay } from "@/lib/checkout";
 import type { Lang } from "@/lib/types";
 
 export default function JoinButton({ lang, demo, price, batch, compact = false }: { lang: Lang; demo: boolean; price: number; batch: string; compact?: boolean }) {
@@ -17,7 +18,16 @@ export default function JoinButton({ lang, demo, price, batch, compact = false }
       setBusy(false);
       return setError(r?.error || t(lang, "error_generic"));
     }
-    router.replace(r.next);
+    let next = r.next;
+    if (r.pay) {
+      const p = await payWithRazorpay(r.pay);
+      if (!p.ok) {
+        setBusy(false);
+        return setError(p.cancelled ? "" : p.error);
+      }
+      next = p.next;
+    }
+    router.replace(next);
     router.refresh();
   }
   return (

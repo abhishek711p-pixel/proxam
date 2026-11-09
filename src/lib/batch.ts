@@ -8,3 +8,12 @@ export function activeEnrollment(user: User) {
 export function paymentsEnabled() {
   return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 }
+
+/**
+ * Demo mode (enrol without charging) only on a local/dev server with no Razorpay keys.
+ * On the live site without keys, buying is closed instead, so nobody gets a batch for free.
+ */
+export function demoPayments() {
+  const live = process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_OTP !== "1";
+  return !paymentsEnabled() && !live;
+}

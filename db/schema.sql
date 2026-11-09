@@ -206,3 +206,21 @@ update tasks set target_field = case target_field when 'pcb' then 'neet' else 'j
 update notifications set aud_field = case aud_field when 'pcb' then 'neet' else 'jee' end,
     data = jsonb_set(data, '{audience,field}', to_jsonb(case aud_field when 'pcb' then 'neet' else 'jee' end))
   where aud_type = 'batch' and aud_cls = '12' and aud_field in ('pcm', 'pcb', 'pcmb');
+
+-- Razorpay orders (Nov 2026). An order is made before Checkout opens; it becomes "paid" only after the
+-- Razorpay signature is checked (in /api/pay/verify or the webhook), and only then the batch/test/seat is given.
+-- status: created | paid | needs_refund (paid, but the student already had that batch: refund from Razorpay dashboard)
+create table if not exists payment_orders (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  kind text not null,
+  ref text,
+  cls text,
+  amount integer not null,
+  status text not null default 'created',
+  payment_id text unique,
+  created_at timestamptz not null default now(),
+  paid_at timestamptz
+);
+create index if not exists payment_orders_user_idx on payment_orders (user_id, created_at desc);
+create index if not exists payment_orders_status_idx on payment_orders (status, created_at desc);

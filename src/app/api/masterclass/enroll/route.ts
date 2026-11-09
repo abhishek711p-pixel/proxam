@@ -1,7 +1,8 @@
 import { currentUser } from "@/lib/auth";
-import { paymentsEnabled } from "@/lib/batch";
+import { demoPayments, paymentsEnabled } from "@/lib/batch";
 import { nowISO } from "@/lib/ids";
-import { addSeat, allMasterclasses } from "@/lib/store";
+import { addSeat, allMasterclasses, hit } from "@/lib/store";
+import { createOrder } from "@/lib/payments";
 import { fail, ok } from "@/lib/http";
 import { mcIsOver, mcMatches } from "@/lib/masterclass";
 
@@ -18,10 +19,20 @@ export async function POST(req: Request) {
 
   if ((user.masterclassSeats || []).some((s) => s.masterclassId === m.id)) return ok({ already: true });
 
-  if (paymentsEnabled()) {
-    // TODO (Phase 2): Razorpay order for m.price, verify in webhook, then add the seat with mode "razorpay".
-    return fail("Online payment is not connected yet.");
+  if (m.price <= 0) {
+    await addSeat(user.id, { masterclassId: m.id, amount: 0, paidAt: nowISO(), mode: "admin" });
+    return ok({ enrolled: true });
   }
+  if (paymentsEnabled()) {
+    if (!(await hit(`pay:${user.id}`, 10, 60_000))) return fail("Please wait a moment and try again.");
+    try {
+      const pay = await createOrder(user, { kind: "masterclass", ref: m.id, amount: m.price, description: `Masterclass: ${m.title}`.slice(0, 250) });
+      return ok({ pay });
+    } catch (e) {
+      return fail((e as Error).message);
+    }
+  }
+  if (!demoPayments()) return fail("Online payment is being set up. Please try again soon.");
   // Demo mode: no gateway configured, add the seat without charging.
   await addSeat(user.id, { masterclassId: m.id, amount: m.price, paidAt: nowISO(), mode: "demo" });
   return ok({ enrolled: true });

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { t } from "@/lib/i18n";
+import { payWithRazorpay } from "@/lib/checkout";
 import { testSubjectLabel, type Section } from "@/lib/config";
 import type { Lang } from "@/lib/types";
 
@@ -50,6 +51,13 @@ export default function StartButton({
       if (!b?.ok) {
         setBusy(false);
         return setError(b?.error || t(lang, "error_generic"));
+      }
+      if (b.pay) {
+        const p = await payWithRazorpay(b.pay);
+        if (!p.ok) {
+          setBusy(false);
+          return setError(p.cancelled ? "" : p.error);
+        }
       }
     }
     const r = await post("/api/attempts/start", fav ? { favSubject: pick } : {});
