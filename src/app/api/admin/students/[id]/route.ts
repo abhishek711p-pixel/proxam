@@ -10,6 +10,7 @@ import {
   addEnrollment,
   addTestPurchase,
   clearSteps,
+  deleteUser,
   endEnrollment,
   getTask,
   getUser,
@@ -154,9 +155,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       await removeSeat(u.id, str("masterclassId"));
       break;
     }
+    case "delete": {
+      await deleteUser(u.id);
+      return ok();
+    }
     default:
       return fail("Unknown action.");
   }
   await refreshProgress([u.id]);
+  return ok();
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await isAdmin())) return fail("Unauthorised", 401);
+  const { id } = await params;
+  const u = await getUser(id);
+  if (!u) return fail("Student not found", 404);
+  await deleteUser(id);
   return ok();
 }

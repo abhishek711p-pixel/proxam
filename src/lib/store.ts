@@ -134,6 +134,13 @@ export async function sessionOk(userId: string, sessionId: string) {
   return Boolean(await q1(`select 1 from users where id = $1 and session_id = $2`, [userId, sessionId]));
 }
 
+/** Delete a student and all their associated records (admin). */
+export async function deleteUser(userId: string) {
+  await q(`delete from tasks where target_user = $1`, [userId]);
+  await q(`delete from notifications where aud_type = 'student' and aud_user = $1`, [userId]);
+  return (await q(`delete from users where id = $1 returning 1`, [userId])).length > 0;
+}
+
 /** Save the profile; the mobile number (for calls and WhatsApp reminders) lives in its own column. */
 export async function setProfile(userId: string, profile: User["profile"], mobile?: string) {
   if (mobile) await q(`update users set profile = $2, mobile = $3 where id = $1`, [userId, j(profile), mobile]);

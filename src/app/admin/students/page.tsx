@@ -5,6 +5,7 @@ import Pager from "@/components/admin/Pager";
 import { CLASSES, FIELDS, classLabel, type ClassLevel } from "@/lib/config";
 import Select from "@/components/Select";
 import { finalizeExpired } from "@/lib/testEngine";
+import DeleteStudentButton from "@/components/admin/DeleteStudentButton";
 
 export default async function Students({ searchParams }: { searchParams: Promise<Filters> }) {
   await finalizeExpired();
@@ -41,14 +42,14 @@ export default async function Students({ searchParams }: { searchParams: Promise
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
-              {["Student", "Mobile · Email", "Class · Field", "City · Board", "Goal", "Tests", "Latest", "Weak subjects", "Call", "Batch", "Progress"].map((h) => (
+              {["Student", "Mobile · Email", "Class · Field", "City · Board", "Goal", "Tests", "Latest", "Weak subjects", "Call", "Batch", "Progress", "Action"].map((h) => (
                 <th key={h} className="px-4 py-3 font-semibold">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.length === 0 && (
-              <tr><td colSpan={11} className="px-4 py-8 text-center text-slate-500">No students match.</td></tr>
+              <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500">No students match.</td></tr>
             )}
             {rows.map((r) => (
               <tr key={r.id} className="align-top">
@@ -63,6 +64,9 @@ export default async function Students({ searchParams }: { searchParams: Promise
                 <td className="px-4 py-3"><span className="pill bg-slate-100">{r.callStatus}</span></td>
                 <td className="px-4 py-3">{r.batch === "none" ? "—" : <><span className="text-xs font-semibold text-brand-900">{r.batchName}</span><br /><span className="pill bg-brand-100 text-brand-700">₹{r.batchAmount} {r.batch === "demo" ? "(demo)" : r.batch === "admin" ? "(admin)" : "paid"}</span></>}</td>
                 <td className="px-4 py-3">{r.progress === undefined ? "—" : <><b>{r.progress}%</b>{r.behind ? <><br /><span className="text-xs text-accent-700">{r.behind} steps behind</span></> : <><br /><span className="text-xs text-slate-500">on track</span></>}</>}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <DeleteStudentButton id={r.id} name={r.name || r.mobile || "this student"} />
+                </td>
               </tr>
             ))}
           </tbody>

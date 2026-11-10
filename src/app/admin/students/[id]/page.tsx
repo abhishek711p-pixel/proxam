@@ -13,6 +13,7 @@ import { PlanSettings, PlanWeeks } from "@/components/admin/PlanEditor";
 import { chapterOpts, nextWeekLabel, studentPlanView, subjectOpts, syllabusGroups } from "@/lib/planAdmin";
 import { TestSyllabus, WeekAccess } from "@/components/admin/RoadmapAccess";
 import { dayKey } from "@/lib/learn";
+import DeleteStudentButton from "@/components/admin/DeleteStudentButton";
 
 const when = (iso?: string) =>
   iso ? new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "Never";
@@ -64,6 +65,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
             <Link className="btn-primary btn-sm" href={`/admin/notifications?to=student&student=${u.id}`}>
               Send notification
             </Link>
+            <DeleteStudentButton id={u.id} name={p?.name || u.mobile || "this student"} redirectOnDelete="/admin/students" label="Delete Lead" />
           </div>
         </div>
       </section>
